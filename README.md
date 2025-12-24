@@ -112,7 +112,7 @@ fn main() {
 * [x] **Account**: 资产冻结与解冻机制
 * [x] **Test**: 集成测试与基准测试环境
 * [x] **Feature**: 撤单功能 (Cancel Order) & 索引构建
-* [ ] **Safety**: 引入 `rust_decimal` 替代 u64 解决精度问题
+* [x] **Safety**: 引入 `rust_decimal` 替代 u64 解决精度问题
 * [ ] **IO**: 引入 `serde` 实现数据序列化与持久化
 * [ ] **Error**: 使用 `thiserror` 规范化错误处理
 * [ ] **Arch**: 升级为基于 Channel 的异步 Actor 模型

@@ -1,4 +1,5 @@
-use mach_rs::{Asset, AccountManager,AccountError, OrderBook, Order, OrderSide};
+use rust_decimal_macros::dec;
+use mach_rs::{Asset, AccountManager, AccountError, OrderBook, Order, OrderSide};
 
 fn main() {
     // 1. 初始化两个模块
@@ -11,9 +12,9 @@ fn main() {
 
     // 3. 初始充值 (上帝视角发钱)
     // User 1 (Maker): 有 10 BTC，准备卖
-    let _ = account.deposit(1, btc, 10);
+    let _ = account.deposit(1, btc, dec!(10.0));
     // User 2 (Taker): 有 200,000 USDT，准备买
-    let _ = account.deposit(2, usdt, 200_000);
+    let _ = account.deposit(2, usdt, dec!(200_000));
 
     println!("--- 初始化完成 ---");
 
@@ -23,13 +24,13 @@ fn main() {
     // ------------------------------------------------------
     println!("User 1 尝试挂卖单...");
     // 卖 1 BTC，价格 20000
-    match account.try_freeze(1, btc, 1) {
+    match account.try_freeze(1, btc, dec!(1)) {
         Ok(_) => {
             let order = Order {
                 id: 101,
                 user_id: 1,
-                price: 20000,
-                quantity: 1,
+                price: dec!(20000),
+                quantity: dec!(1),
                 side: OrderSide::Ask,
             };
             book.match_order(order);
@@ -50,15 +51,15 @@ fn main() {
             // 在实际系统中，这里可能需要 panic! 或者发报警邮件
         }
     }
-    
+
 
     // ------------------------------------------------------
     // 第二步：User 2 吃买单 (Taker)
     // 关联逻辑：Account 先冻结 -> Engine 撮合 -> 拿着结果回 Account 结算
     // ------------------------------------------------------
     println!("User 2 尝试吃单...");
-    let buy_qty = 1;
-    let buy_price = 20000;
+    let buy_qty =dec!(1);
+    let buy_price = dec!(20000);
     let cost = buy_qty * buy_price; // 20000 USDT
 
     if account.try_freeze(2, usdt, cost).is_ok() {

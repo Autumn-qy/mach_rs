@@ -1,19 +1,20 @@
 use criterion::{ criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
-use mach_rs::{Order, OrderSide,OrderBook};
+use rust_decimal_macros::dec;
+use mach_rs::{Order, OrderSide, OrderBook, Price};
 fn benchmark_matching_engine(c: &mut Criterion) {
-    c.bench_function("match_1000000_orders", |b| {
+    c.bench_function("match_100000_orders", |b| {
         b.iter(|| {
             // 1. 每次迭代创建一个新的 OrderBook
             let mut book = OrderBook::new();
 
             // 2. 铺设 1000 个卖单 (Maker)
             // 价格从 10000 开始递增，模拟深度
-            for i in 0..1000000 {
+            for i in 0..100_000 {
                 let order = Order {
                     id: i,
-                    price: 10000 + (i % 100) as u64, // 价格范围 10000 ~ 10099
-                    quantity: 10,
+                    price: Price::from(10000 + (i % 100)), // 价格范围 10000 ~ 10099
+                    quantity: dec!(10),
                     side: OrderSide::Ask,
                     user_id:1
                 };
@@ -25,8 +26,8 @@ fn benchmark_matching_engine(c: &mut Criterion) {
             // 价格设置为 20000 (远高于卖单价)，确保能成交
             let taker_order = Order {
                 id: 9999,
-                price: 20000,
-                quantity: 10000,
+                price: dec!(20000),
+                quantity: dec!(10000),
                 side: OrderSide::Bid,
                 user_id:2
             };

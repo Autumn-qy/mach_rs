@@ -1,5 +1,6 @@
 // tests/integration_test.rs
 
+use rust_decimal_macros::dec;
 use mach_rs::{AccountManager, AccountError, OrderBook, Order, OrderSide, Asset, TradeEvent};
 
 // --- 辅助函数：模拟结算 ---
@@ -31,16 +32,16 @@ fn test_full_match_happy_path() {
     let usdt = Asset::from("USDT");
 
     // 充值
-    account.deposit(1, btc, 10).unwrap();
-    account.deposit(2, usdt, 1000).unwrap();
+    account.deposit(1, btc, dec!(10)).unwrap();
+    account.deposit(2, usdt, dec!(1000)).unwrap();
 
     // User 1 挂单
-    account.try_freeze(1, btc, 1).unwrap();
-    book.match_order(Order { id: 1, user_id: 1, price: 100, quantity: 1, side: OrderSide::Ask });
+    account.try_freeze(1, btc, dec!(1)).unwrap();
+    book.match_order(Order { id: 1, user_id: 1, price: dec!(100), quantity: dec!(1), side: OrderSide::Ask });
 
     // User 2 吃单
-    account.try_freeze(2, usdt, 100).unwrap();
-    let trades = book.match_order(Order { id: 2, user_id: 2, price: 100, quantity: 1, side: OrderSide::Bid });
+    account.try_freeze(2, usdt, dec!(100)).unwrap();
+    let trades = book.match_order(Order { id: 2, user_id: 2, price: dec!(100), quantity: dec!(1), side: OrderSide::Bid });
 
     // 断言：产生了一笔成交
     assert_eq!(trades.len(), 1);
@@ -50,12 +51,12 @@ fn test_full_match_happy_path() {
 
     // 验证余额
     // User 1: 剩 9 BTC, 赚了 100 USDT
-    assert_eq!(account.get_balance(1, btc), (9, 0));
-    assert_eq!(account.get_balance(1, usdt), (100, 0));
+    assert_eq!(account.get_balance(1, btc), (dec!(9), dec!(0)));
+    assert_eq!(account.get_balance(1, usdt), (dec!(100), dec!(0)));
 
     // User 2: 剩 900 USDT, 买了 1 BTC
-    assert_eq!(account.get_balance(2, usdt), (900, 0));
-    assert_eq!(account.get_balance(2, btc), (1, 0));
+    assert_eq!(account.get_balance(2, usdt), (dec!(900), dec!(0)));
+    assert_eq!(account.get_balance(2, btc), (dec!(1), dec!(0)));
 }
 
 #[test]
@@ -68,26 +69,26 @@ fn test_partial_fill_maker_remains() {
     let btc = Asset::from("BTC");
     let usdt = Asset::from("USDT");
 
-    account.deposit(1, btc, 20).unwrap();
-    account.deposit(2, usdt, 20000).unwrap();
+    account.deposit(1, btc, dec!(20)).unwrap();
+    account.deposit(2, usdt, dec!(20000)).unwrap();
 
     // User 1 卖 10 个 (冻结 10)
-    account.try_freeze(1, btc, 10).unwrap();
-    book.match_order(Order { id: 1, user_id: 1, price: 100, quantity: 10, side: OrderSide::Ask });
+    account.try_freeze(1, btc, dec!(10)).unwrap();
+    book.match_order(Order { id: 1, user_id: 1, price: dec!(100), quantity: dec!(10), side: OrderSide::Ask });
 
     // User 2 买 2 个 (冻结 200)
-    account.try_freeze(2, usdt, 200).unwrap();
-    let trades = book.match_order(Order { id: 2, user_id: 2, price: 100, quantity: 2, side: OrderSide::Bid });
+    account.try_freeze(2, usdt, dec!(200)).unwrap();
+    let trades = book.match_order(Order { id: 2, user_id: 2, price: dec!(100), quantity: dec!(2), side: OrderSide::Bid });
 
     assert_eq!(trades.len(), 1);
-    assert_eq!(trades[0].quantity, 2); // 只成交了 2 个
+    assert_eq!(trades[0].quantity, dec!(2)); // 只成交了 2 个
 
     settle_trades(&mut account, trades, btc, usdt);
 
     // 边界检查：User 1 应该还有 8 个 BTC 处于冻结状态（挂在订单簿上）
     // Available: 20初始 - 10挂单 = 10
     // Frozen: 10挂单 - 2成交 = 8
-    assert_eq!(account.get_balance(1, btc), (10, 8));
+    assert_eq!(account.get_balance(1, btc), (dec!(10), dec!(8)));
 }
 
 #[test]
@@ -101,28 +102,28 @@ fn test_taker_sweeps_multiple_orders() {
     let btc = Asset::from("BTC");
     let usdt = Asset::from("USDT");
 
-    account.deposit(1, btc, 10).unwrap();
-    account.deposit(2, btc, 10).unwrap();
-    account.deposit(3, usdt, 1000).unwrap();
+    account.deposit(1, btc, dec!(10)).unwrap();
+    account.deposit(2, btc, dec!(10)).unwrap();
+    account.deposit(3, usdt, dec!(1000)).unwrap();
 
     // Maker 1 & 2
-    account.try_freeze(1, btc, 1).unwrap();
-    book.match_order(Order { id: 1, user_id: 1, price: 100, quantity: 1, side: OrderSide::Ask });
+    account.try_freeze(1, btc, dec!(1)).unwrap();
+    book.match_order(Order { id: 1, user_id: 1, price: dec!(100), quantity: dec!(1), side: OrderSide::Ask });
 
-    account.try_freeze(2, btc, 1).unwrap();
-    book.match_order(Order { id: 2, user_id: 2, price: 101, quantity: 1, side: OrderSide::Ask });
+    account.try_freeze(2, btc, dec!(1)).unwrap();
+    book.match_order(Order { id: 2, user_id: 2, price: dec!(101), quantity: dec!(1), side: OrderSide::Ask });
 
     // Taker 3: 买 3个，预期成交 2个 (剩下的 1个会挂单)
     // 冻结 User 3 资金: 3 * 105 = 315 USDT
-    account.try_freeze(3, usdt, 315).unwrap();
-    let trades = book.match_order(Order { id: 3, user_id: 3, price: 105, quantity: 3, side: OrderSide::Bid });
+    account.try_freeze(3, usdt, dec!(315)).unwrap();
+    let trades = book.match_order(Order { id: 3, user_id: 3, price: dec!(105), quantity: dec!(3), side: OrderSide::Bid });
 
     assert_eq!(trades.len(), 2); // 应该有两笔成交
     settle_trades(&mut account, trades, btc, usdt);
 
     // 检查 User 3 买了 2 个 BTC
     // 余额里应该还有剩下的钱被冻结着（因为那个挂单还没成交）
-    assert_eq!(account.get_balance(3, btc).0, 2);
+    assert_eq!(account.get_balance(3, btc).0, dec!(2));
 }
 
 #[test]
@@ -131,8 +132,8 @@ fn test_price_mismatch_no_trade() {
     // 卖方要价 200，买方只出 100
     let mut book = OrderBook::new();
 
-    book.match_order(Order { id: 1, user_id: 1, price: 200, quantity: 1, side: OrderSide::Ask });
-    let trades = book.match_order(Order { id: 2, user_id: 2, price: 100, quantity: 1, side: OrderSide::Bid });
+    book.match_order(Order { id: 1, user_id: 1, price: dec!(200), quantity: dec!(1), side: OrderSide::Ask });
+    let trades = book.match_order(Order { id: 2, user_id: 2, price: dec!(100), quantity: dec!(1), side: OrderSide::Bid });
 
     assert_eq!(trades.len(), 0); // 必须无成交
 }
@@ -143,10 +144,10 @@ fn test_insufficient_funds_rejection() {
     let mut account = AccountManager::new();
     let usdt = Asset::from("USDT");
 
-    account.deposit(1, usdt, 10).unwrap(); // 只有 10 块
+    account.deposit(1, usdt, dec!(10)).unwrap(); // 只有 10 块
 
     // 试图冻结 100 块
-    let result = account.try_freeze(1, usdt, 100);
+    let result = account.try_freeze(1, usdt, dec!(100));
 
     // 必须报错，而不是让余额变成负数
     assert!(matches!(result, Err(AccountError::InsufficientAvailable)));
@@ -159,17 +160,17 @@ fn test_cancel_order_releases_funds() {
     let usdt = Asset::from("USDT");
 
     // 1. 充值
-    account.deposit(1, usdt, 1000).unwrap();
+    account.deposit(1, usdt, dec!(1000)).unwrap();
 
     // 2. 下单 (买 5 BTC @ 100) -> 冻结 500 USDT
-    account.try_freeze(1, usdt, 500).unwrap();
+    account.try_freeze(1, usdt, dec!(500)).unwrap();
     let order_id = 101;
     book.match_order(Order {
-        id: order_id, user_id: 1, price: 100, quantity: 5, side: OrderSide::Bid
+        id: order_id, user_id: 1, price: dec!(100), quantity: dec!(5), side: OrderSide::Bid
     });
 
     // 验证冻结状态
-    assert_eq!(account.get_balance(1, usdt), (500, 500)); // 500可用, 500冻结
+    assert_eq!(account.get_balance(1, usdt), (dec!(500), dec!(500))); // 500可用, 500冻结
 
     // 3. 撤单
     if let Some(cancelled) = book.cancel_order(order_id) {
@@ -183,5 +184,5 @@ fn test_cancel_order_releases_funds() {
     }
 
     // 4. 验证资金已回退
-    assert_eq!(account.get_balance(1, usdt), (1000, 0)); // 全回来了
+    assert_eq!(account.get_balance(1, usdt), (dec!(1000), dec!(0))); // 全回来了
 }

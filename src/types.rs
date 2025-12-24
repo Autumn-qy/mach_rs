@@ -1,7 +1,8 @@
 use std::fmt;
+use rust_decimal::Decimal;
 
-pub type Price = u64;
-pub type Quantity = u64;
+pub type Price = Decimal;
+pub type Quantity = Decimal;
 pub type OrderID = u64;
 
 

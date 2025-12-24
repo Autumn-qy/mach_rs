@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use crate::types::{Asset, UserID};
+use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 
 #[derive(Debug,Default, Clone)]
 pub struct Balance {
-    pub available :u64,
-    pub frozen: u64,
+    pub available: Decimal,
+    pub frozen: Decimal,
 }
 
 #[derive(Debug)]
@@ -34,7 +36,7 @@ impl AccountManager {
     }
 
     // 充值
-    pub fn deposit(&mut self, user_id: UserID, asset: Asset, amount: u64) -> Result<(), AccountError> {
+    pub fn deposit(&mut self, user_id: UserID, asset: Asset, amount: Decimal) -> Result<(), AccountError> {
         let balance = self.accounts
             .entry(user_id).or_default()
             .entry(asset.clone()).or_default(); // 这里 clone 是为了后面打印日志，如果追求极致性能可以优化
@@ -46,7 +48,7 @@ impl AccountManager {
     }
 
     // 尝试冻结资金 (下单前预扣)
-    pub fn try_freeze(&mut self, user_id: UserID, asset: Asset, amount: u64) -> Result<(), AccountError> {
+    pub fn try_freeze(&mut self, user_id: UserID, asset: Asset, amount: Decimal) -> Result<(), AccountError> {
         let balance = self.get_balance_mut(&user_id, asset)?;
 
         // 检查余额是否足够
@@ -62,7 +64,7 @@ impl AccountManager {
     }
 
     // 撤单：解冻资金
-    pub fn unlock(&mut self, user_id: UserID, asset: Asset, amount: u64) -> Result<(), AccountError> {
+    pub fn unlock(&mut self, user_id: UserID, asset: Asset, amount: Decimal) -> Result<(), AccountError> {
         let balance = self.get_balance_mut(&user_id, asset)?;
 
         if balance.frozen < amount {
@@ -78,7 +80,7 @@ impl AccountManager {
     }
 
     // 成交：扣除冻结资金
-    pub fn confirm_trade(&mut self, user_id: UserID, asset: Asset, amount: u64) -> Result<(), AccountError> {
+    pub fn confirm_trade(&mut self, user_id: UserID, asset: Asset, amount: Decimal) -> Result<(), AccountError> {
         let balance = self.get_balance_mut(&user_id, asset)?;
 
         if balance.frozen < amount {
@@ -92,11 +94,11 @@ impl AccountManager {
         Ok(())
     }
 
-    pub fn get_balance(&mut self, user_id: UserID, asset: Asset) -> (u64,u64) {
+    pub fn get_balance(&mut self, user_id: UserID, asset: Asset) -> (Decimal,Decimal) {
         let balance = self.get_balance_mut(&user_id, asset);
         match balance {
             Ok(balance) => (balance.available, balance.frozen),
-            Err(_) => (0, 0)
+            Err(_) => (dec!(0), dec!(0))
         }
     }
 }

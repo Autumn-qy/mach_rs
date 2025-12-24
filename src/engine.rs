@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, VecDeque,HashMap};
-use crate::types::{Order, OrderSide, Price, TradeEvent,OrderID};
+use rust_decimal_macros::dec;
+use crate::types::{Order, OrderSide, Price, TradeEvent, OrderID};
 
 
 struct OrderLocation{
@@ -28,7 +29,7 @@ impl OrderBook {
         let mut trades = Vec::new();
 
         loop {
-            if incoming_order.quantity == 0 {
+            if incoming_order.quantity == dec!(0.0) {
                 break;
             }
 
@@ -61,7 +62,7 @@ impl OrderBook {
             };
 
             while let Some(maker_order) = queue.front_mut() {
-                if incoming_order.quantity == 0 {
+                if incoming_order.quantity == dec!(0.0) {
                     break;
                 }
 
@@ -80,7 +81,7 @@ impl OrderBook {
                 });
 
 
-                if maker_order.quantity == 0 {
+                if maker_order.quantity == dec!(0.0) {
                     self.order_index.remove(&maker_order.id);
                     queue.pop_front();
                 } else {
@@ -98,7 +99,7 @@ impl OrderBook {
             }
         }
 
-        if incoming_order.quantity > 0 {
+        if incoming_order.quantity > dec!(0.0) {
 
             self.order_index.insert(incoming_order.id, OrderLocation{
                 price:incoming_order.price,
